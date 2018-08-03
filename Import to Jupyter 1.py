@@ -170,17 +170,27 @@ imputer = Imputer(strategy="median")                      #the imputer computes 
 housing_num = housing.drop("ocean_proximity", axis=1)     #We need to drop ocean_proximity since the median can only be computed in numerical attributes
 imputer.fit(housing_num)
 
-X = imputer.transform(housing_num)                        #Use the "trained" imputer to transform the training set. Replacing the missing values
+x = imputer.transform(housing_num)                        #Use the "trained" imputer to transform the training set. Replacing the missing values
 housing_tr = pd.DataFrame(X, colums=housing_num.columns)        #to return to Pandas DataFrame, Optional
 
 #Break---
 
 #to change ocean_proximity into a numeric value if we didn't use the Imputer
+
+>>>housing_cat = housing["ocean_proximity"]
+>>>housing_cat.head(10)
+
+#Convert all tect categories to numbers using Pandas factorize()
+
 >>>housing_cat_encoded, housing_categories = housing_cat.factorize()
 >>>housing_cat_encoded[:10]
 >>>housing_categories
 
->>>from sklearn.preprocessing import OneHotEncoder     #or CategoricalEncoder p.65
+#Break---
+
+#Converet interger categorical values into one-hot vectors. Only one attribute will be 1 or 0, hot or cold
+
+>>>from sklearn.preprocessing import OneHotEncoder     #For CategoricalEncoder p.65
 >>>encoder = OneHotEncoder()
 >>>housing_cat_1hot = encoder.fit_transform(housing_cat_encoded.reshape(-1,1))
 >>>housing_cat_1hot
@@ -188,28 +198,37 @@ housing_tr = pd.DataFrame(X, colums=housing_num.columns)        #to return to Pa
 
 >>>cat_encoder.categories_
 
+#Break---
 
-from sklearn.base import BaseEstimator, TransformerMixin
+#Custom transformers
+#Create the following: fit(), transform(), or fit_transform()
+#Combines previously used attributes
+
+from sklearn.base import BaseEstimator, TransformerMixin            #BaseEstimator allows for 2 extra methods (get_params(), and set_params())
 
 rooms_ix, bedrooms_ix, population_ix, household_ix = 3, 4, 5, 6
 
 class CombinedAttributesAdder(BaseEstimator, TransformerMixin):
-    def __init__(self, add_bedrooms_per_room = True):
+    def __init__(self, add_bedrooms_per_room = True):               #add_bedrooms_per_room acts as the hyperparameter, thus allowing us to determine if this attribute helps the machine learning algorithm
         self.add_bedrooms_per_room = add_bedrooms_per_room
     def fit(self, y=None):
         return self
     def transform(self, x, y=None):
-        rooms_per_houshold = X[:, rooms_ix] / x[:, household_ix]
-        population_per_houshold = X[:, population_ix] / x[:, household_ix]
+        rooms_per_houshold = x[:, rooms_ix] / x[:, household_ix]
+        population_per_houshold = x[:, population_ix] / x[:, household_ix]
         if self.add_bedrooms_per_room:
-            bedrooms_per_room = X[:, bedrooms_ix] / X[:, rooms_ix]
-            return np.c_[X, rooms_per_houshold, population_per_houshold, bedrooms_per_room]
+            bedrooms_per_room = x[:, bedrooms_ix] / x[:, rooms_ix]
+            return np.c_[x, rooms_per_houshold, population_per_houshold, bedrooms_per_room]
         else:
-            return np.c_[X, rooms_per_houshold, population_per_houshold]
+            return np.c_[x, rooms_per_houshold, population_per_houshold]
 
 attr_addr = CombinedAttributesAdder(add_bedrooms_per_room=False)
 housing_extra_attribs = attr_addr.transform(housing.values)
 
+#Break---
+
+#Create a  pipeline for numerical attributes
+#Pipeline constrictor takes a list of name/estimator pairs to define a sequence of steps. All but the last estimator must be transformers
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -222,11 +241,13 @@ num_pipeline = Pipeline([
 
 housing_num_tr = num_pipeline.fit-transform(housing_num)
 
+#Break---
 
+#Custom tranormer that allows us to feed the PandasDataFrame containing non-numerical colums directly into the Pipeline
 
 from sklearn.base import BaseEstimator, TransformerMixin
 
-class DataFrameSelector(BaseEstimator, TransformerMixin):
+class DataFrameSelector(BaseEstimator, TransformerMixin):       #selecs the desired attributes, dropping the rest, and converts the resulting dataframe to a NumPy arrray
     def __init__(self, attrbute_names):
         self.attribute_names = attribute_names
     def fit(self, X, y=None):
@@ -234,7 +255,9 @@ class DataFrameSelector(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return X[self.attribute_names].values
 
+#Break---
 
+#Create a pipeline for catergorical attributes
 
 num_attribs = list(housing_num)
 cat_attribs = ["ocean_proximity"]
@@ -251,9 +274,9 @@ cat_pipeline = Pipeline([
         ('cat_encoder', CategoricalEncoder(encoding="onehot-dense")),
 ])
 
-#Full pipeline
+#Full pipeline, joining the two scripted above using FeatureUnion
 
-from sklearn.pipeline import Feature Union
+from sklearn.pipeline import FeatureUnion
 
 full_pipeline = FeatureUnion(transformer_list=[
         ("num_pipeline", num_pipeline)
@@ -263,6 +286,7 @@ full_pipeline = FeatureUnion(transformer_list=[
 >>>housing_prepared = full_pipeline.fit_transform(housing)
 >>>housing_prepared
 
+#Break---
 
 from sklearn.linear_model import Linear_Regression
 

@@ -401,7 +401,7 @@ final_rmse = np.sqrt(final_mse)
 >>>mnist = fetch_mldata('MNIST original')
 >>>mnist
 
->>>X, y =mnist["data"], mnist["target"]
+>>>x, y =mnist["data"], mnist["target"]
 >>>X.shape
 >>>y.shape
 
@@ -501,10 +501,10 @@ y_train_pred = cross_val_predict(sgd.clf, x_train, y_train_5, cv=3)
 from sklearn.metrics import roc_curve(fpr, tpr, label=None)
 
 fpr, tpr, thresholds = roc_curve(y_train_5, y_scores)
-#FRP againdt the tpr
+#FRP against the tpr
 def plot_roc_curve(fpr, tpr, label=None):
     plt.plot(fpr, tpr, linewidth=2, label=label)
-    plt.plot([0, 1], [0. 1], 'k--')
+    plt.plot([0, 1], [0, 1], 'k--')
     plt.axis([0, 1, 0, 1])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
@@ -516,3 +516,22 @@ plt.show()
 
 >>>from sklearn.metrics import roc_auc_score
 >>>roc_auc_score(y_train_5, y_scores)
+
+#Create a random forest Classifier
+
+from sklearn.ensemble import RandomForestClassifier
+
+forest_clf = RandomForestClassifier(random_state=42)
+y_probas_forest = cross_val_predict(forest_clf, x_train, y_train_5, cv=3, method="predict_proba")
+
+#To create a ROC curve you must have scores, not probabilities. Thus use the positive class's probability as the score.
+
+y_scores_forest = y_probas_forest[:, 1]   #score = proba of positive class
+fpr_forest, tpr_forest, thresholds_forest = roc_curve(y_train_5, y_scores_forest)
+
+#Plot the roc curve
+
+plt.plot(fpr, tpr, "b:", label="SGD")
+plot_roc_curve(fpr_forest, tpr_forest, "Radnom Forest")
+plt.legend(loc="lower right")
+plt.show()
